@@ -21,7 +21,11 @@ import qualified Wasp.AppSpec.ExtImport as AS.ExtImport
 import qualified Wasp.AppSpec.Page as AS.Page
 import qualified Wasp.AppSpec.Route as AS.Route
 import Wasp.AppSpec.Valid (getApp, isAuthEnabled)
-import Wasp.Generator.AuthProviders (gitHubAuthProvider, googleAuthProvider)
+import Wasp.Generator.AuthProviders
+  ( gitHubAuthProvider,
+    googleAuthProvider,
+    keycloakAuthProvider,
+  )
 import Wasp.Generator.AuthProviders.OAuth (OAuthAuthProvider, frontendLoginUrl, serverOauthRedirectHandlerUrl)
 import Wasp.Generator.FileDraft (FileDraft)
 import Wasp.Generator.Monad (Generator)
@@ -126,6 +130,7 @@ createRouterTemplateData spec =
       map
         (createExternalAuthProviderTemplateData maybeAuth)
         [ (AS.App.Auth.isGoogleAuthEnabled, googleAuthProvider),
+          (AS.App.Auth.isKeycloakAuthEnabled, keycloakAuthProvider),
           (AS.App.Auth.isGitHubAuthEnabled, gitHubAuthProvider)
         ]
     maybeAuth = AS.App.auth $ snd $ getApp spec

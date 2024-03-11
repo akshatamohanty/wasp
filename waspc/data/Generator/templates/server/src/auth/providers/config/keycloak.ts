@@ -1,6 +1,6 @@
 {{={= =}=}}
 import { Router, Request as ExpressRequest } from "express";
-import { Google, generateCodeVerifier, generateState } from "arctic";
+import { Keycloak, generateCodeVerifier, generateState } from "arctic";
 
 import { HttpError } from 'wasp/server';
 import { handleRejection } from "wasp/server/utils";
@@ -33,13 +33,14 @@ const _waspConfig: ProviderConfig = {
         const router = Router();
 
         const env = ensureEnvVarsForProvider(
-            ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+            ["KEYCLOAK_REALM_URL", "KEYCLOAK_CLIENT_ID", "KEYCLOAK_CLIENT_SECRET"],
             provider
         );
 
-        const google = new Google(
-            env.GOOGLE_CLIENT_ID,
-            env.GOOGLE_CLIENT_SECRET,
+        const keycloak = new Keycloak(
+            env.KEYCLOAK_REALM_URL,
+            env.KEYCLOAK_CLIENT_ID,
+            env.KEYCLOAK_CLIENT_SECRET,
             getRedirectUriForCallback(provider.id),
         );
 
@@ -58,7 +59,7 @@ const _waspConfig: ProviderConfig = {
                 res
             );
 
-            const url = await google.createAuthorizationURL(state, codeVerifier, config);
+            const url = await keycloak.createAuthorizationURL(state, codeVerifier, config);
             return res.status(302)
                 .setHeader("Location", url.toString())
                 .end();
@@ -67,8 +68,8 @@ const _waspConfig: ProviderConfig = {
         router.get(`/${callbackPath}`, handleRejection(async (req, res) => {
             try {
                 const { code, codeVerifier } = getDataFromCallback(req);
-                const { accessToken } = await google.validateAuthorizationCode(code, codeVerifier);
-                const { providerProfile, providerUserId } = await getGoogleProfile(accessToken);
+                const { accessToken } = await keycloak.validateAuthorizationCode(code, codeVerifier);
+                const { providerProfile, providerUserId } = await getKeycloakProfile(accessToken);
                 const { redirectUri } =  await finishOAuthFlowAndGetRedirectUri(
                     provider,
                     providerProfile,
@@ -123,12 +124,13 @@ const _waspConfig: ProviderConfig = {
             }
         }
 
-        async function getGoogleProfile(accessToken: string): Promise<{
+        async function getKeycloakProfile(accessToken: string): Promise<{
             providerProfile: unknown;
             providerUserId: string;
         }> {
+            const userInfoEndpoint = `${env.KEYCLOAK_REALM_URL}/protocol/openid-connect/userinfo`;
             const response = await fetch(
-                "https://openidconnect.googleapis.com/v1/userinfo",
+                userInfoEndpoint,
                 {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
